@@ -95,3 +95,30 @@ class MovieLensModel(tfrs.Model):
 
     # La task calcule les métriques et le loss
     return self.task(user_embeddings, positive_film_embeddings)
+
+model = MovieLensModel(user_model, film_model)
+model.compile(optimizer=tf.keras.optimizers.Adagrad(learning_rate=0.1))
+
+#Segmenter les batchs de manière à ce que le modèle roule 10 batch d'entraînement et 13 batchs de test par epoch, tout en ayant un batch size qui est un multiple de 2^n.  
+cached_train = train.shuffle(l).batch(8192).cache()
+cached_test = test.batch(2048).cache()
+
+## Fit the model 
+history_train = model.fit(cached_train, validation_data = cached_test, epochs=32)
+
+plt.plot(history_train.history['total_loss'] )
+plt.title("Total Loss over epochs", fontsize=14)
+plt.ylabel('Loss Total')
+plt.xlabel('epochs')
+plt.show()
+
+plt.plot(history_train.history['factorized_top_k/top_100_categorical_accuracy'],color='green', alpha=0.8, label='Train' )
+plt.plot(history_train.history['val_factorized_top_k/top_100_categorical_accuracy'],color='red', alpha=0.8, label='Test' )
+plt.title("Accuracy over epochs", fontsize=14)
+plt.ylabel('Accuracy')
+plt.xlabel('epochs')
+plt.legend(loc='upper left')
+plt.show()
+
+##Evaluate the model
+model.evaluate(cached_test, return_dict=True)

@@ -2,3 +2,4 @@ tensorflow
 tensorflow_recommenders
 tensorflow_datasets
 matplotlib
+pprint

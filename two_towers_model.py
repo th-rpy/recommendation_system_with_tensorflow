@@ -59,3 +59,39 @@ ids_ = list(set(next(ids).numpy()))'''
 ids = np.unique(np.concatenate(list(user_ids)))
 len_users = len(ids)
 print(len_users) #943
+
+embedding_dimension = 32
+
+#We define the embedding on the user side, we must transform the user ids into a vector representation
+user_model = tf.keras.Sequential([tf.keras.layers.experimental.preprocessing.StringLookup(vocabulary=ids_, mask_token=None),
+                                  tf.keras.layers.Embedding(len_users + 1,
+                                                            embedding_dimension)])
+                                                                                        
+# We now define the embedding of the film portion 
+
+film_model = tf.keras.Sequential([tf.keras.layers.experimental.preprocessing.StringLookup(vocabulary=titles ,mask_token=None),
+                                   tf.keras.layers.Embedding(len_films + 1, 
+                                                             embedding_dimension)])                              
+                                                           
+#We define the desired metrics : FactorizedTopK
+metrics = tfrs.metrics.FactorizedTopK(candidates=films.batch(128).map(film_model))
+
+#The Retrieval task is defined according to the FactorizedTopK metrics. 
+task = tfrs.tasks.Retrieval(metrics=metrics)
+
+class MovieLensModel(tfrs.Model):
+
+  def __init__(self, user_model, film_model):
+    super().__init__()
+    self.film_model: tf.keras.Model = film_model
+    self.user_model: tf.keras.Model = user_model
+    self.task: tf.keras.layers.Layer = task
+
+  def compute_loss(self, features: Dict[Text, tf.Tensor], training=False) -> tf.Tensor:
+    
+    user_embeddings = self.user_model(features['user_id'])
+
+    positive_film_embeddings = self.film_model(features['movie_title'])
+
+    # La task calcule les métriques et le loss
+    return self.task(user_embeddings, positive_film_embeddings)

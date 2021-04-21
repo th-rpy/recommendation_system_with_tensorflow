@@ -122,3 +122,14 @@ plt.show()
 
 ##Evaluate the model
 model.evaluate(cached_test, return_dict=True)
+
+# Recommend the 5 best movies for user 25
+
+index = tfrs.layers.factorized_top_k.BruteForce(model.user_model)
+
+index.index(films.batch(100).map(model.film_model), films)
+
+print("the top 5 recommended movies for user 25 are : " )
+
+_, titles = index(tf.constant(['25']))
+titles[0, :5]
